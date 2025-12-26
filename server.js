@@ -13,26 +13,23 @@ app.get("/", (req, res) => {
 
 // 🔥 Recharge API → generates JSON tokens (no storage)
 app.post("/api/wallet/recharge", (req, res) => {
-  if (!req.body) {
+  // Accept from JSON body OR query params
+  const userId =
+    req.body?.userId || req.query.userId || "UNKNOWN_USER";
+
+  const amount =
+    Number(req.body?.amount || req.query.amount);
+
+  if (!amount || amount <= 0) {
     return res.status(400).json({
       success: false,
-      message: "No JSON body received"
+      message: "Valid amount is required"
     });
   }
 
-  const { userId, amount } = req.body;
-
-  if (!userId || !amount || amount <= 0) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid userId or amount"
-    });
-  }
-
-  // Generate tokens (₹1 = 1 token)
   const tokens = generateTokens(userId, amount);
 
-  return res.json({
+  res.json({
     success: true,
     message: "Recharge successful",
     userId,
@@ -40,6 +37,7 @@ app.post("/api/wallet/recharge", (req, res) => {
     tokens
   });
 });
+
 
 // Server start
 const PORT = process.env.PORT || 5000;
