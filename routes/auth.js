@@ -8,31 +8,44 @@ const User = require("../models/User");
 const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 
 // 📝 1. SIGNUP: Requires phno, email, passwd
+// 📝 SIGNUP: Now taking name, age, and gender
 router.post("/register", async (req, res) => {
-  const { phoneNumber, email, password } = req.body;
+  const { name, age, gender, phoneNumber, email, password } = req.body; // Destructure new fields
+  
   try {
     let user = await User.findOne({ $or: [{ phoneNumber }, { email }] });
-    if (user) return res.status(400).json({ msg: "User already exists with this phone or email" });
+    if (user) return res.status(400).json({ msg: "User already exists" });
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    user = new User({ phoneNumber, email, password: hashedPassword, otp: otpCode });
+    // Save with the new details 🚀
+    user = new User({ 
+        name, 
+        age, 
+        gender, 
+        phoneNumber, 
+        email, 
+        password: hashedPassword, 
+        otp: otpCode 
+    });
+    
     await user.save();
 
+    // Send via Twilio (Logic stays the same)
     await client.messages.create({
       body: `Your Wallet API verification code is: ${otpCode}`,
       from: process.env.TWILIO_PHONE,
       to: phoneNumber
     });
 
-    res.json({ msg: "Signup successful. OTP Sent for verification." });
+    res.json({ msg: "OTP Sent to phone" });
   } catch (err) {
+    console.error(err.message);
     res.status(500).send("Server error");
   }
 });
-
 // 🔑 2. LOGIN: Supports Email+Pass OR Phno+Pass
 router.post("/login", async (req, res) => {
   const { identifier, password } = req.body; // identifier can be email or phone
